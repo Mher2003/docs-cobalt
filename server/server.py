@@ -1,6 +1,7 @@
-from flask import Blueprint,render_template, request, make_response
+from flask import Blueprint, jsonify, request, make_response
+from functools import wraps
 import os, datetime
-from .auth import login, checkSession, deleteSession
+from .auth import token_login, token_check
 from .db import findID, addFile, change_time
 from .qr import CreateQR
 
@@ -20,53 +21,59 @@ def setBaseURL(url):
 
 @server.route('/', methods= ['GET'])
 def home():
-    return "Cobalt Docs V1.0"
+    return "Cobalt Docs V1.2"
 
-@server.route('/', methods= ['POST'])
-def api():
-    return "Cobalt Docs API V1.0"
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.cookies.get("token")
+
+        if not token:
+            return "No Token"
+
+        if(not token_check(token)):
+            return "Wrong Token"
+        return f(*args, **kwargs)
+    return decorated
 
 @server.route('/login', methods=['POST'])
 def log():
-    password = request.form["password"]
-    sessionID = login(password)
-    if(not sessionID):
-        return "Invalid Session"
+    try:
+        password = request.form["password"]
+    except:
+        return "No Password supplied"
+
+    token = token_login(password) 
+    if(not token):
+        return "Wrong Password"
     response = make_response()
-    response.set_cookie("sessionID", sessionID)
+    response.set_cookie("token", token)
     return response
 
-@server.route('/logout', methods=['POST'])
-def logout():
-    sessionID = request.cookies.get("sessionID")
-    deleteSession(sessionID)
-    response = make_response()
-    response.set_cookie("sessionID", "")
-    return response
-
-@server.route('/add', methods = ['POST'])
-def add():
-    sessionID = request.cookies.get("sessionID")
-    if(not checkSession(sessionID)): # Check auth
-        response = make_response("Invalid Session", 200)
-        response.mimetype = "text/plain"
-        response.set_cookie("sessionID", "")
-        return response
-    id = addFile(request.form["type"],request.form["file"])
+@server.route('/document', methods = ['POST'])
+@token_required
+def document_add():
+    f = request.files["file"]
+    id = addFile(request.form["type"],request.form["filename"])
+    
     if(not id):
         return "Filename exists"
-    qr = CreateQR(baseURL, docsdir, id, request.form["type"], request.form["file"])
+    
+    record = findID(id)
+    qr = CreateQR(baseURL, docsdir, id, request.form["type"], request.form["filename"])
+
+    if(not f):
+        return "File doesn't exists"
+    file = os.path.join(docsdir,record["type"],record["file"])
+    f.save(file)
+    change_time(id)
+    
     return id
 
-@server.route('/upload', methods = ['POST'])
-def upload():
-    sessionID = request.cookies.get("sessionID")
-    if(not checkSession(sessionID)): # Check auth
-        response = make_response("Invalid Session", 200)
-        response.mimetype = "text/plain"
-        response.set_cookie("sessionID", "")
-        return response
-    f,id = request.files['file'],request.form["id"]
+@server.route('/document', methods = ['PATCH'])
+@token_required
+def document_edit():
+    f,id = request.files["file"],request.form["id"]
     record = findID(id)
     if((not record) or (not f)):
         return "File doesn't exists"
@@ -74,3 +81,4 @@ def upload():
     f.save(file)
     change_time(id)
     return "True"
+
