@@ -1,4 +1,5 @@
 from flask import Blueprint, request
+from flask_cors import cross_origin
 from functools import wraps
 import os, datetime
 from .auth import token_login, token_check
@@ -22,7 +23,7 @@ def setBaseURL(url):
 
 @server.route('/', methods= ['GET'])
 def home():
-    return "Cobalt Docs V1.3"
+    return "Cobalt Docs V1.4"
 
 def token_required(f):
     @wraps(f)
@@ -38,8 +39,8 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
-@server.route('/login', methods=['POST'])
-def log():
+@server.route('/token', methods=['POST'])
+def login():
     try:
         password = request.form["password"]
     except:
@@ -52,17 +53,30 @@ def log():
 @server.route('/document', methods = ['POST'])
 @token_required
 def document_add():
-    f = request.files["file"]
-    id = addFile(request.form["type"],request.form["filename"])
+   
+    try:
+        f = request.files["file"]
+    except:
+        return response_error_no_file()
     
+    try:
+        filename = request.form["filename"]
+    except:
+        return response_error_no_file()
+    
+    try:
+        type = request.form["type"]
+    except:
+        return response_error_no_file()
+    
+    id = addFile(type, filename)
+
     if(not id):
         return response_error_filename_exists()
     
     record = findID(id)
-    qr = CreateQR(baseURL, docsdir, id, request.form["type"], request.form["filename"])
+    qr = CreateQR(baseURL, docsdir, id, type, filename)
 
-    if(not f):
-        return response_error_no_file()
     file = os.path.join(docsdir,record["type"],record["file"])
     f.save(file)
     change_time(id)

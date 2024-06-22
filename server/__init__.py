@@ -1,9 +1,12 @@
 from flask import Flask
+from flask_cors import CORS
 import os
 from .db import connect
 
 def create_app(userTypes, baseURL, docsdir, mongoURL):
     app = Flask(__name__)
+    cors = CORS(app)
+
     connect()
 
     from .server import server, setDocsDir, setTypes, setBaseURL
