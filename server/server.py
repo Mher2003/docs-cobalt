@@ -1,9 +1,10 @@
-from flask import Blueprint, jsonify, request, make_response
+from flask import Blueprint, request
 from functools import wraps
 import os, datetime
 from .auth import token_login, token_check
 from .db import findID, addFile, change_time
 from .qr import CreateQR
+from .response import *
 
 server = Blueprint('register', __name__)
 
@@ -21,18 +22,19 @@ def setBaseURL(url):
 
 @server.route('/', methods= ['GET'])
 def home():
-    return "Cobalt Docs V1.2"
+    return "Cobalt Docs V1.3"
 
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.cookies.get("token")
-
+        try:
+            token = request.form["token"]
+        except:
+            return response_error_no_token()
         if not token:
-            return "No Token"
-
+            return 
         if(not token_check(token)):
-            return "Wrong Token"
+            return response_error_invalid_token()
         return f(*args, **kwargs)
     return decorated
 
@@ -41,14 +43,11 @@ def log():
     try:
         password = request.form["password"]
     except:
-        return "No Password supplied"
-
+        return response_error_no_password()
     token = token_login(password) 
     if(not token):
-        return "Wrong Password"
-    response = make_response()
-    response.set_cookie("token", token)
-    return response
+        return response_error_wrong_password()
+    return response_token(token)
 
 @server.route('/document', methods = ['POST'])
 @token_required
@@ -57,18 +56,18 @@ def document_add():
     id = addFile(request.form["type"],request.form["filename"])
     
     if(not id):
-        return "Filename exists"
+        return response_error_filename_exists()
     
     record = findID(id)
     qr = CreateQR(baseURL, docsdir, id, request.form["type"], request.form["filename"])
 
     if(not f):
-        return "File doesn't exists"
+        return response_error_no_file()
     file = os.path.join(docsdir,record["type"],record["file"])
     f.save(file)
     change_time(id)
     
-    return id
+    return response_document(id)
 
 @server.route('/document', methods = ['PATCH'])
 @token_required
@@ -76,7 +75,7 @@ def document_edit():
     f,id = request.files["file"],request.form["id"]
     record = findID(id)
     if((not record) or (not f)):
-        return "File doesn't exists"
+        return response_error_no_file()
     file = os.path.join(docsdir,record["type"],record["file"])
     f.save(file)
     change_time(id)
