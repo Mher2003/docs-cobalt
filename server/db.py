@@ -25,7 +25,7 @@ def findFile(type,file):
 def findLastNFiles(n):
     if(n <= 0):
         return False
-    results = db_docs.find_one().sort([('count', 1)]).limit(n)
+    results = list(db_docs.find().sort({'create': -1}).limit(n))
     return results
 
 

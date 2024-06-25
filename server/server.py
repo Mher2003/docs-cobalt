@@ -1,9 +1,10 @@
 from flask import Blueprint, request
 from flask_cors import cross_origin
+import urllib
 from functools import wraps
 import os, datetime
 from .auth import token_login, token_check
-from .db import findID, addFile, change_time
+from .db import findID, addFile, change_time, findLastNFiles
 from .qr import CreateQR
 from .response import *
 
@@ -59,6 +60,20 @@ def login():
     if(not token):
         return response_error_wrong_password()
     return response_token(token)
+
+@server.route('/documents', methods = ['GET'])
+def documents_get():
+    data = findLastNFiles(5)
+
+    results = []
+
+    for record in data:
+        results.append({
+            "Filename": record["file"],
+            "URL": urllib.parse.urljoin(baseURL,record["type"]+"/"+record["file"])
+    })
+        
+    return response_documents(results)
 
 @server.route('/document', methods = ['POST'])
 @token_required

@@ -12,6 +12,12 @@ def response_document(document_id):
     resp.status_code = 200
     return resp
 
+def response_documents(documents):
+    resp_message = jsonify({"Data": {"Documents": documents}, "ResponseCode": 0, "ResponseMessage": "Success"})
+    resp = make_response(resp_message)
+    resp.status_code = 200
+    return resp
+
 def response_error_no_token():
     resp_message = jsonify({"Data": {}, "ResponseCode": 1, "ResponseMessage": "No token supplied"})
     resp = make_response(resp_message)
