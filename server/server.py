@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, current_app
 from flask_cors import cross_origin
 import urllib
 from functools import wraps
@@ -9,18 +9,6 @@ from .qr import CreateQR
 from .response import *
 
 server = Blueprint('register', __name__)
-
-def setDocsDir(dir):
-    global docsdir
-    docsdir = dir
-
-def setTypes(type):
-    global types
-    types=type
-
-def setBaseURL(url):
-    global baseURL
-    baseURL = url
 
 @server.route('/', methods= ['GET'])
 def home():
@@ -35,7 +23,6 @@ def token_required(f):
             try:
                 data = request.get_json()
                 token = data["token"]
-                print(data["token"])
             except:
                 return response_error_no_token()
         if not token:
@@ -70,7 +57,8 @@ def documents_get():
     for record in data:
         results.append({
             "Filename": record["file"],
-            "URL": urllib.parse.urljoin(baseURL,record["type"]+"/"+record["file"])
+            "URL": urllib.parse.urljoin(current_app.config["BASE_URL"],record["type"]+"/"+record["file"]),
+            "Time": record["create"]
     })
         
     return response_documents(results)
@@ -98,7 +86,7 @@ def document_add():
     if(not id):
         return response_error_filename_exists()
     
-    CreateQR(baseURL, docsdir, id, type, filename)
+    CreateQR(current_app.config["BASE_URL"], current_app.config["DOCS_DIR"], id, type, filename)
 
     return response_document(id)
 
@@ -120,7 +108,7 @@ def file_upload():
     if(not record):
         return response_error_invalid_document_id()
     
-    file = os.path.join(docsdir,record["type"],record["file"])
+    file = os.path.join(current_app.config["DOCS_DIR"],record["type"],record["file"])
     f.save(file)
     change_time(id)
     

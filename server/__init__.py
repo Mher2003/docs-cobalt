@@ -1,29 +1,32 @@
-from flask import Flask
-from flask_cors import CORS
 import os
+from flask import Flask, current_app
+from flask_cors import CORS
+from .server import server
 from .db import connect
 
-def create_app(userTypes, baseURL, docsdir, mongoURL):
+
+def create_app():
     app = Flask(__name__)
-    cors = CORS(app)
-
-    connect()
-
-    from .server import server, setDocsDir, setTypes, setBaseURL
     
-    if(not os.path.isdir(docsdir)):
-        os.mkdir(docsdir)
+    return app
 
-    types = userTypes.split(',')
-    types.append("QR")
-    for type in types:
-        typedir = os.path.join(docsdir, type)
-        if(not os.path.isdir(typedir)):
-            os.mkdir(typedir)
-    setDocsDir(docsdir)
-    setTypes(types)
-    setBaseURL(baseURL)
+def init_app(app):
+    CORS(app)
+
+    with app.app_context():
+        connect("mongodb://"+current_app.config["MONGO_URL"])
     
-    app.register_blueprint(server, url_prefix='/')
+        if(not os.path.isdir(current_app.config["DOCS_DIR"])):
+            os.mkdir(current_app.config["DOCS_DIR"])
+
+        directories_string = current_app.config["DIRECTORIES"]
+        directories = directories_string.split(',')
+        directories.append("QR")
+        for dir in directories:
+            directory_path = os.path.join(current_app.config["DOCS_DIR"], dir)
+            if(not os.path.isdir(directory_path)):
+                os.mkdir(directory_path)
+    
+        app.register_blueprint(server, url_prefix='/')
 
     return app

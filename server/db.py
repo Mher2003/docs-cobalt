@@ -3,8 +3,8 @@ import datetime as dt
 import uuid
 from .types import isType
 
-def connect():
-    cluster = MongoClient("mongodb://localhost:27017")
+def connect(mongodb_address):
+    cluster = MongoClient(mongodb_address)
     database = cluster["docs"]
     global db_docs
     db_docs = database["docs"]
