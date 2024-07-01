@@ -112,6 +112,7 @@ def file_upload():
     return response_document(id)
 
 @server.route("/qr", methods = ["POST"])
+@token_required
 def qr_code():
     try:
         request_data = request.get_json()
