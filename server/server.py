@@ -1,18 +1,17 @@
-from flask import Blueprint, request, current_app
-from flask_cors import cross_origin
 import urllib
+import os
+from flask import Blueprint, request, current_app
 from functools import wraps
-import os, datetime
-from .auth import token_login, token_check
-from .db import findID, addFile, change_time, findLastNFiles
-from .qr import CreateQR
+from .auth import *
+from .db import *
+from .qr import *
 from .response import *
 
-server = Blueprint('register', __name__)
+server = Blueprint("register", __name__)
 
-@server.route('/', methods= ['GET'])
+@server.route("/", methods= ["GET"])
 def home():
-    return "Cobalt Docs V Beta 1.5"
+    return "Cobalt Docs V Beta 1.6"
 
 def token_required(f):
     @wraps(f)
@@ -32,7 +31,7 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
-@server.route('/token', methods=['POST'])
+@server.route("/token", methods=["POST"])
 def login():
 
     try:
@@ -48,22 +47,22 @@ def login():
         return response_error_wrong_password()
     return response_token(token)
 
-@server.route('/documents', methods = ['GET'])
+@server.route("/documents", methods = ["GET"])
 def documents_get():
-    data = findLastNFiles(5)
+    data = document_find_last_n(5)
 
     results = []
 
     for record in data:
         results.append({
-            "Filename": record["file"],
-            "URL": urllib.parse.urljoin(current_app.config["BASE_URL"],record["type"]+"/"+record["file"]),
+            "Filename": record["filename"],
+            "URL": urllib.parse.urljoin(current_app.config["BASE_URL"],record["directory"]+"/"+record["filename"]),
             "Time": record["create"]
     })
         
     return response_documents(results)
 
-@server.route('/document', methods = ['POST'])
+@server.route("/document", methods = ["POST"])
 @token_required
 def document_add():
     try:
@@ -72,7 +71,7 @@ def document_add():
         return response_error_not_supported()
     
     try:
-        type = request_data["type"]
+        directory = request_data["directory"]
     except:
         return response_error_no_file()
 
@@ -81,16 +80,14 @@ def document_add():
     except:
         return response_error_no_file()
     
-    id = addFile(type, filename)
+    id = document_create_record(directory, filename)
 
     if(not id):
         return response_error_filename_exists()
     
-    CreateQR(current_app.config["BASE_URL"], current_app.config["DOCS_DIR"], id, type, filename)
-
     return response_document(id)
 
-@server.route('/file', methods = ['POST'])
+@server.route("/file", methods = ["POST"])
 @token_required
 def file_upload():
     try:
@@ -103,14 +100,35 @@ def file_upload():
     except:
         return response_error_no_file()
     
-    record = findID(id)
+    record = document_find_by_id(id)
 
     if(not record):
         return response_error_invalid_document_id()
     
-    file = os.path.join(current_app.config["DOCS_DIR"],record["type"],record["file"])
+    file = os.path.join(current_app.config["DOCS_DIR"],record["directory"],record["filename"])
     f.save(file)
-    change_time(id)
+    document_change_time(id)
     
     return response_document(id)
+
+@server.route("/qr", methods = ["POST"])
+def qr_code():
+    try:
+        request_data = request.get_json()
+    except:
+        return response_error_not_supported()
+    
+    try:
+        id = request_data["document_id"]
+    except:
+        return response_error_no_document_id()
+    
+    record = document_find_by_id(id)
+
+    if(not record):
+        return response_error_invalid_document_id()
+    
+    qr_code = qr_create(current_app.config["BASE_URL"], record["directory"], record["filename"])
+
+    return response_qr(qr_code)
 

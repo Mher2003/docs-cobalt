@@ -6,9 +6,10 @@ load_dotenv()
 
 app = create_app()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.config["SECRET_KEY"] = os.environ.get("SECRET")
     app.config["JWT_SECRET"] = os.environ.get("JWT_SECRET")
+    app.config["PASSWORD_HASHED"]=os.environ.get("PASSWORD_HASHED")
     app.config["DIRECTORIES"]=os.environ.get("DIRECTORIES")
     app.config["BASE_URL"]=os.environ.get("BASE_URL")
     app.config["DOCS_DIR"]=os.environ.get("DOCS_DIR")

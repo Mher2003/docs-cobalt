@@ -12,6 +12,12 @@ def response_document(document_id):
     resp.status_code = 200
     return resp
 
+def response_qr(qr_code):
+    resp_message = jsonify({"Data": {"Base64QR": qr_code}, "ResponseCode": 0, "ResponseMessage": "Success"})
+    resp = make_response(resp_message)
+    resp.status_code = 200
+    return resp
+
 def response_documents(documents):
     resp_message = jsonify({"Data": {"Documents": documents}, "ResponseCode": 0, "ResponseMessage": "Success"})
     resp = make_response(resp_message)

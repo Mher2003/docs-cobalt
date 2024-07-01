@@ -1,8 +1,13 @@
 import qrcode
 import urllib
-import os
+import io
+import base64
 
-def CreateQR(baseURL, docsdir, id, type, file):
-    img = qrcode.make(urllib.parse.urljoin(baseURL,type+"/"+file))
-    img.save(os.path.join(docsdir,"QR",id+".png"))
-    return True
+def qr_create(base_url, type, file):
+    qr_code = qrcode.make(urllib.parse.urljoin(base_url,type+"/"+file))
+    byte_io = io.BytesIO()
+    qr_code.save(byte_io)
+    
+    base64_image = base64.b64encode(byte_io.getvalue()).decode("utf-8")
+
+    return base64_image
