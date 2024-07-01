@@ -9,6 +9,10 @@ from .response import *
 
 server = Blueprint("register", __name__)
 
+def set_ip_ban(ban):
+    global ip_ban
+    ip_ban = ban
+
 @server.route("/", methods= ["GET"])
 def home():
     return "Cobalt Docs V Beta 1.6"
@@ -44,6 +48,7 @@ def login():
         return response_error_no_password()
     token = token_login(password) 
     if(not token):
+        ip_ban.add()
         return response_error_wrong_password()
     return response_token(token)
 

@@ -17,4 +17,4 @@ if __name__ == "__main__":
 
     init_app(app)
 
-    app.run(debug=True, port=os.environ.get("PORT"))
+    app.run(debug=False, port=os.environ.get("PORT"))
